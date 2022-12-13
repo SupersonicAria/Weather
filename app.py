@@ -1,5 +1,5 @@
 import requests 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -14,19 +14,35 @@ class City(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    if request.method == 'POST':
+        new_city = request.form.get('city')
+
+        if new_city:
+            new_city_obj = City(name=new_city)
+
+            db.session.add(new_city_obj)
+            db.session.commit()
+
+    cities = City.query.all()
+
     url = 'http://api.openweathermap.org/data/2.5/forecast?id=524901&appid={36d5e340a45394ac57e7f479840d8fab}'
-    city = 'Las Vegas'
+    
+    weather_data = []
 
-    r = requests.get(url.format(city)).json()
-    print(r)
+    for city in cities:
 
-    weather = {
-        'city' : city,
-        'temperature' : r ['main']['temp'],
-        'description' : r ['weather'][0]['description'],
-        'icon' : r['weather'][0]['icon'],
-    }
+        r = requests.get(url.format(city.name)).json()
 
-    return render_template('weather.html', weather=weather)
+
+        weather = {
+         'city' : city.name,
+         'temperature' : r ['main']['temp'],
+            'description' : r ['weather'][0]['description'],
+           'icon' : r['weather'][0]['icon'],
+        }
+
+        weather_data.append(weather)
+
+    return render_template('weather.html', weather=weather_data)
